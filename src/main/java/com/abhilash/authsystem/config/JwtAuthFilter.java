@@ -1,5 +1,8 @@
 package com.abhilash.authsystem.config;
 
+import com.abhilash.authsystem.entity.User;
+import com.abhilash.authsystem.repository.RoleRepository;
+import com.abhilash.authsystem.repository.UserRepository;
 import com.abhilash.authsystem.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,6 +22,8 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final RoleRepository roleRepository;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -28,22 +33,36 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("Abhilash authHeader is " + authHeader);
+        String path = request.getRequestURI();
+
+        if (path.startsWith("/api/v1/auth")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("Abhilash returning authHeader");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         String token = authHeader.substring(7);
+        System.out.println("Abhilash token is " + token);
 
         try {
             String email = jwtService.extractEmail(token);
-
+            System.out.println("Abhilash email is " + email);
+            User user =  userRepository.findUserByEmail(email).orElseThrow(() -> new RuntimeException("Role not found"));
+            List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority(role.getName()))
+                    .toList();
+            System.out.println("Abhilash authorities are " + authorities);
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(
                             email,
                             null,
-                            List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                            authorities
                     );
 
             SecurityContextHolder.getContext().setAuthentication(auth);
