@@ -30,7 +30,7 @@ public class AuthService {
         String name = req.getName();
 
         if(userRepository.findUserByEmail(email).isPresent()){
-            return "Already exists";
+            throw new RuntimeException("User already exists");
         }
 
         Role role = roleRepository.findByName("ROLE_USER").orElseThrow(() -> new RuntimeException("Role not found"));
@@ -46,7 +46,7 @@ public class AuthService {
         Optional<User> user = null;
 
         if(userRepository.findUserByEmail(email).isEmpty()){
-            return "User doesn't exist";
+            throw new RuntimeException("User doesn't exist");
         }
 
         user = userRepository.findUserByEmail(email);
@@ -55,7 +55,7 @@ public class AuthService {
             return jwtService.generateToken(user.get().getEmail());
         }
 
-        return "Incorrect credentials";
+        throw new RuntimeException("Invalid credentials");
     }
 
 }
